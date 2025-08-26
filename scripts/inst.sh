@@ -18,12 +18,12 @@ echo "📂 Created temporary build directory: $TMP_DIR"
 echo "📥 Cloning repository into temp dir..."
 git clone https://github.com/neonstudios-dev/pux.git "$TMP_DIR/pux"
 
-cd "$TMP_DIR/pux" || { echo "❌ Failed to enter project directory"; exit 1; }
+cd "$TMP_DIR/pux/pux" || { echo "❌ Failed to enter project directory"; exit 1; }
 
 # Add Newtonsoft.Json package before building
 echo "📦 Adding Newtonsoft.Json (v13.0.4-beta1)..."
 dotnet add package Newtonsoft.Json --version 13.0.4-beta1
-
+cd ..
 # Build project
 echo "⚙️ Building project in Release mode..."
 dotnet publish -c Release -r linux-x64 --self-contained false
