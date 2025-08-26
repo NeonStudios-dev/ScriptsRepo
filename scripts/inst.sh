@@ -27,7 +27,7 @@ dotnet add package Newtonsoft.Json --version 13.0.4-beta1
 cd ..
 # Build project
 echo "⚙️ Building project in Release mode..."
-dotnet publish -c Release -r linux-x64 --self-contained false
+dotnet publish -c Release -r linux-x64 --self-contained true
 
 # Find publish directory dynamically
 PUBLISH_DIR=$(find ./pux/bin/Release -type d -path "*/linux-x64/publish" | head -n 1)
