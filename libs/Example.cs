@@ -96,6 +96,7 @@ namespace test
             // - Root privileges enabled
             // - Debug mode enabled for maximum verbosity
             cx.commands.ExecuteCommand("", "echo Hello from cx.commands with root and debug!", true, true);
+            
             // Example 4: Root privileges with debug output
             // - uses zsh
             // - Root privileges enabled
