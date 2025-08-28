@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 namespace cx
 {
 
@@ -9,7 +10,7 @@ namespace cx
     {
 
 
-        public static void ExecuteCommand(string shell, string command, bool root)
+        public static void ExecuteCommand(string shell, string command, bool root, bool debug)
         {
             try
             {
@@ -108,13 +109,26 @@ namespace cx
         {
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         }
+        public static string currentOS
+        {
+            get
+            {
+                if (IsLinux()) return "linux";
+                if (IsMacOS()) return "macos";
+                if (IsWindows()) return "windows";
+                return "unknown";
+            }
+        }
     }
-    public class Utils
+
+    public class Checks
     {
         public static bool IfExists(string path)
         {
             return System.IO.File.Exists(path) || System.IO.Directory.Exists(path);
         }
+
+
         public static void IsRunning(string processName, int processID, Action ifRunningAction, Action ifNotRunningAction)
         {
             try
@@ -153,7 +167,23 @@ namespace cx
                 Console.WriteLine($"Error checking process: {ex.Message}");
                 ifNotRunningAction();
             }
+
         }
-    } 
-        
+        public static bool IsRooted()
+        {
+            if (OsChecker.IsLinux() || OsChecker.IsMacOS())
+            {
+                return Environment.UserName == "root";
+            }
+            else if (OsChecker.IsWindows())
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
+
+            }
+            return false;
+        }
+    }
 }
