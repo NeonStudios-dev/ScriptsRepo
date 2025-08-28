@@ -1,66 +1,189 @@
-using cx;
-namespace test
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+namespace cx
 {
-    public class Test
+
+#pragma warning disable CS8981 // The type name only contains lower-cased ascii characters. Such names may become reserved for the language.
+    public class commands
+#pragma warning restore CS8981 // The type name only contains lower-cased ascii characters. Such names may become reserved for the language.
     {
-        public static void Main(string[] args)
+
+
+        public static void ExecuteCommand(string shell, string command, bool root, bool debug)
         {
-            // Check if Zsh shell exists in the system
-            if (Checks.IfExists("/bin/zsh"))
+            try
             {
-                Console.WriteLine("Zsh exists");
+                string fileName = "";
+                string arguments = "";
+                bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+                bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+                bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+                if (isWindows)
+                {
+                    if (root)
+                    {
+                        fileName = "powershell";
+                        arguments = $"Start-Process cmd -Verb RunAs -ArgumentList '/c {command}'";
+                    }
+                    else
+                    {
+                        fileName = "cmd.exe";
+                        arguments = $"/c {command}";
+                    }
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(shell))
+                    {
+                        Console.WriteLine("No shell specified, defaulting to bash.");
+                        shell = "bash"; // Default to bash if no shell is specified
+                    }
+
+                    if (root)
+                    {
+                        fileName = "sudo";
+                        arguments = $"/bin/{shell} -c \"{command}\"";
+                    }
+                    else
+                    {
+                        fileName = $"/bin/{shell}";
+                        arguments = $"-c \"{command}\"";
+                    }
+                }
+
+                ProcessStartInfo startInfo = new ProcessStartInfo()
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                using (Process process = Process.Start(startInfo))
+                {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                    while (!process.StandardOutput.EndOfStream)
+                    {
+                        string line = process.StandardOutput.ReadLine();
+                        if (line != null)
+                            Console.WriteLine(line);
+                    }
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+
+                    while (!process.StandardError.EndOfStream)
+                    {
+                        string line = process.StandardError.ReadLine();
+                        if (line != null)
+                            Console.WriteLine(line);
+                    }
+
+                    process.WaitForExit();
+                }
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("Zsh does not exist");
+                Console.WriteLine($"Error executing command: {ex.Message}");
             }
 
-            // Check if PrismLauncher is running (using processID 0 to check for any instance)
-            Checks.IsRunning("prismlauncher", 0, () =>
-            {
-                Console.WriteLine("launcher running is running");
-            }, () =>
-            {
-                Console.WriteLine("Zsh is not running");
-            });
+        }
+    }
+    public class OsChecker
+    {
+        public static bool IsLinux()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+        }
 
-            // Display the current operating system
-            Console.WriteLine(OsChecker.currentOS);
+        public static bool IsMacOS()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        }
 
-            // Check specific operating systems and display appropriate messages
-            if (OsChecker.IsLinux())
+        public static bool IsWindows()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        }
+        public static string currentOS
+        {
+            get
             {
-                Console.WriteLine("You are on Linux");
+                if (IsLinux()) return "linux";
+                if (IsMacOS()) return "macos";
+                if (IsWindows()) return "windows";
+                return "unknown";
             }
-            if (OsChecker.IsMacOS())
+        }
+    }
+
+    public class Checks
+    {
+        public static bool IfExists(string path)
+        {
+            return System.IO.File.Exists(path) || System.IO.Directory.Exists(path);
+        }
+
+
+        public static void IsRunning(string processName, int processID, Action ifRunningAction, Action ifNotRunningAction)
+        {
+            try
             {
-                Console.WriteLine("You are on MacOS");
+                if (processID == 0)
+                {
+                    Process[] processes = Process.GetProcessesByName(processName);
+                    if (processes.Length > 0)
+                    {
+                        ifRunningAction();
+                    }
+                    else
+                    {
+                        ifNotRunningAction();
+                    }
+                }
+                else
+                {
+                    Process process = Process.GetProcessById(processID);
+                    if (process != null && process.ProcessName.Equals(processName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ifRunningAction();
+                    }
+                    else
+                    {
+                        ifNotRunningAction();
+                    }
+                }
             }
-            if (OsChecker.IsWindows())
+            catch (ArgumentException)
             {
-                Console.WriteLine("You are on Windows");
+                ifNotRunningAction();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking process: {ex.Message}");
+                ifNotRunningAction();
             }
 
-            // Execute various commands with different combinations of root access and debug mode
-            // Empty string for shell parameter uses the default shell
-            // Execute command without root, with debug
-            cx.commands.ExecuteCommand("", "echo Hello from cx.commands! and with debug!", false, true);
-            
-            // Execute command with root access, without debug
-            cx.commands.ExecuteCommand("", "echo Hello from cx.commands with root!", true, false);
-            
-            // Execute command with both root access and debug
-            cx.commands.ExecuteCommand("", "echo Hello from cx.commands with root and debug!", true, true);
+        }
+        public static bool IsRooted()
+        {
+            if (OsChecker.IsLinux() || OsChecker.IsMacOS())
+            {
+                return Environment.UserName == "root";
+            }
+            else if (OsChecker.IsWindows())
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
 
-            // Check if the current process is running with elevated privileges (root/administrator)
-            if(Checks.IsRooted() == true)
-            {
-                Console.WriteLine("You are running as root/administrator");
+
             }
-            else
-            {
-                Console.WriteLine("You are not running as root/administrator");
-            }
+            return false;
         }
     }
 }
