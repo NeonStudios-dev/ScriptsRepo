@@ -1,0 +1,162 @@
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+namespace cx
+{
+
+#pragma warning disable CS8981 // The type name only contains lower-cased ascii characters. Such names may become reserved for the language.
+    public class commands
+#pragma warning restore CS8981 // The type name only contains lower-cased ascii characters. Such names may become reserved for the language.
+    {
+
+
+        public static void ExecuteCommand(string shell, string command, bool root)
+        {
+            try
+            {
+                string fileName = "";
+                string arguments = "";
+                bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+                bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+                bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+                if (isWindows)
+                {
+                    if (root)
+                    {
+                        fileName = "powershell";
+                        arguments = $"Start-Process cmd -Verb RunAs -ArgumentList '/c {command}'";
+                    }
+                    else
+                    {
+                        fileName = "cmd.exe";
+                        arguments = $"/c {command}";
+                    }
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(shell))
+                    {
+                        Console.WriteLine("No shell specified, defaulting to bash.");
+                        shell = "bash"; // Default to bash if no shell is specified
+                    }
+
+                    if (root)
+                    {
+                        fileName = "sudo";
+                        arguments = $"/bin/{shell} -c \"{command}\"";
+                    }
+                    else
+                    {
+                        fileName = $"/bin/{shell}";
+                        arguments = $"-c \"{command}\"";
+                    }
+                }
+
+                ProcessStartInfo startInfo = new ProcessStartInfo()
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                using (Process process = Process.Start(startInfo))
+                {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                    while (!process.StandardOutput.EndOfStream)
+                    {
+                        string line = process.StandardOutput.ReadLine();
+                        if (line != null)
+                            Console.WriteLine(line);
+                    }
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+
+                    while (!process.StandardError.EndOfStream)
+                    {
+                        string line = process.StandardError.ReadLine();
+                        if (line != null)
+                            Console.WriteLine(line);
+                    }
+
+                    process.WaitForExit();
+                }
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing command: {ex.Message}");
+            }
+
+        }
+    }
+    public class OsChecker
+    {
+        public static bool IsLinux()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+        }
+
+        public static bool IsMacOS()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        }
+
+        public static bool IsWindows()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        }
+    }
+    public class Utils
+    {
+        public static bool IfExists(string path)
+        {
+            return System.IO.File.Exists(path) || System.IO.Directory.Exists(path);
+        }
+        public static void IsRunning(string processName, int processID, Action ifRunningAction, Action ifNotRunningAction)
+        {
+            try
+            {
+                if (processID == 0)
+                {
+                    // If processID is 0, check for any instance of the process
+                    Process[] processes = Process.GetProcessesByName(processName);
+                    if (processes.Length > 0)
+                    {
+                        ifRunningAction();
+                    }
+                    else
+                    {
+                        ifNotRunningAction();
+                    }
+                }
+                else
+                {
+                    // Check for specific process ID
+                    Process process = Process.GetProcessById(processID);
+                    if (process != null && process.ProcessName.Equals(processName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ifRunningAction();
+                    }
+                    else
+                    {
+                        ifNotRunningAction();
+                    }
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Process with the specified ID is not running.
+                ifNotRunningAction();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking process: {ex.Message}");
+                ifNotRunningAction();
+            }
+        }
+    } 
+        
+}
