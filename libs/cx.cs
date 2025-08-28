@@ -121,7 +121,6 @@ namespace cx
             {
                 if (processID == 0)
                 {
-                    // If processID is 0, check for any instance of the process
                     Process[] processes = Process.GetProcessesByName(processName);
                     if (processes.Length > 0)
                     {
@@ -134,7 +133,6 @@ namespace cx
                 }
                 else
                 {
-                    // Check for specific process ID
                     Process process = Process.GetProcessById(processID);
                     if (process != null && process.ProcessName.Equals(processName, StringComparison.OrdinalIgnoreCase))
                     {
@@ -148,7 +146,6 @@ namespace cx
             }
             catch (ArgumentException)
             {
-                // Process with the specified ID is not running.
                 ifNotRunningAction();
             }
             catch (Exception ex)
