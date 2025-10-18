@@ -17,7 +17,7 @@ print_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
 
 # Configuration
 SCRIPT_NAME="lumina"
-SCRIPT_URL="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/build.sh"
+SCRIPT_URL="https://raw.githubusercontent.com/NeonStudios-dev/ScriptsRepo/refs/heads/main/scripts/build.sh"
 INSTALL_DIR="/usr/local/bin"
 TEMP_FILE="/tmp/lumina-temp"
 
